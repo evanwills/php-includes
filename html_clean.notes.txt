@@ -1,0 +1,19 @@
+Notes on how html_clean class is to work:
+
+When processing an element:
+	1	check if the element is valid
+	2	check if element should be marked for deletion
+	3	3a	if closing, check the stack and close any open tags above it in the stack
+		3b	if opening, check the stack to see if it is valid within its direct parent
+	4	Check attributes
+		4a	check to see if attribute is valid or maked for deletion
+		4b	check to see if attribute's value is valid
+		4c	check to see if attribute and value mark it for deletion
+		4d	check to see if attribute and value mark element for deletion
+		4d	return valid attributes
+	5	update stack
+	6	6a	if element and children are marked for deletion, return empty strign
+		6b	if element only is marked for deletion return non HTML string following tag
+		6c	return clean element and trailing non HTML string
+
+
