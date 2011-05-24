@@ -14,7 +14,21 @@
  *      if it was being called from dev1 or localhost it would return 'localhost'.
  *
  * @param $param_1 mixed 
- 	if string, value to be used if running on apps.acu.edu.au or blogs.acu.edu.au server
+ *	if string, value to be used if running on apps.acu.edu.au or blogs.acu.edu.au server
+ *	if array and host matches array key, array key value is returned. if array key is not
+ *	matched but check_host_name() thinks $param_1 specifies domain values, the first array
+ *	index is returned.
+ *	e.g.	array = (
+ *			  'apps' => 'foo'
+ *			, 'testapps => 'foo bar'
+ *			, 'dev1' => 'bar'
+ *			, 'bar bar'	// default
+ *		)
+ *		if host is apps, 'foo' is returned
+ *		if host is testapps, 'foo bar' is returned
+ *		if host is dev1, 'bar' is returned
+ *		if host is not apps or testapps or dev1, 'bar bar' is returned
+ *
  * @param $param_2 mixed  value to be used running on testapps.acu.edu.au or studentblogs.acu.edu.au server
  * @param $param_3 mixed correct value to be used running on dev1.acu.edu.au or dev-blogs.acu.edu.au server
  * @param $param_4 mixed correct value to be used running on localhost or dev.student.blogs.acu.edu.au server
