@@ -210,7 +210,7 @@ $_SERVER: Array
     [GATEWAY_INTERFACE] =&gt; CGI/1.1
     [SERVER_PROTOCOL] =&gt; HTTP/1.1
     [REQUEST_METHOD] =&gt; POST
-    [QUERY_STRING] =&gt; 
+    [QUERY_STRING] =&gt;
     [REQUEST_URI] =&gt; /eNewsletter-prep/
     [SCRIPT_NAME] =&gt; /eNewsletter-prep/index.php
     [PHP_SELF] =&gt; /eNewsletter-prep/index.php
@@ -221,11 +221,11 @@ $_POST: Array
 (
     [template] =&gt; ACU_Update_2009
     [submit] =&gt; Prepare email
-    [ga_source] =&gt; 
-    [ga_medium] =&gt; 
-    [ga_campaign] =&gt; 
-    [ga_content] =&gt; 
-    [ga_term] =&gt; 
+    [ga_source] =&gt;
+    [ga_medium] =&gt;
+    [ga_campaign] =&gt;
+    [ga_content] =&gt;
+    [ga_term] =&gt;
 )
 
 This is a debug function call
@@ -249,7 +249,7 @@ $var2 = 1234589.32 (double)</pre>
 
 	<p class="top-h2"><a href="#top" name="config">top</a></p>
 	<h2>Configuration</h2>
-	<p>By default debug() outputs directly to screen in HTML format but this can be over ridden by having a debug.info file in the same directory/folder as the script being run.</p> 
+	<p>By default debug() outputs directly to screen in HTML format but this can be over ridden by having a debug.info file in the same directory/folder as the script being run.</p>
 
 	<p class="top"><a href="#top" name="options">top</a></p>
 	<h3>Options</h3>
@@ -480,13 +480,13 @@ format = html; comment / html / log / text
 ;          empty log file
 ;     'echo' (default) - render to screen
 ;     'return' - returned by the debug function
- 
+
 mode = echo; append / clean / echo / log / log_append / log_clean / return
 
 
 ; -----------------------------------------------
 ; log_file is the file name to output log to. If
-; logging is active it defaults to 
+; logging is active it defaults to
 ; .debug__log.[initial file name].log
 ;log_file = ;
 
