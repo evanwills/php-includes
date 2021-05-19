@@ -1,5 +1,42 @@
 <?php
 
+// ==================================================================
+// START: debug include
+
+if(isset($_SERVER['HTTP_HOST'])){ $path = $_SERVER['HTTP_HOST']; $pwd = dirname($_SERVER['SCRIPT_FILENAME']).'/'; }
+else { $path = $_SERVER['USER']; $pwd = $_SERVER['PWD'].'/'; };
+switch($path)
+{
+	case 'localhost':	// home laptop
+	case 'evan':	$inc = '/var/www/includes/'; break; // home laptop
+
+	case 'burrawangcoop.net.au':	// DreamHost
+	case 'adra.net.au':		// DreamHost
+	case 'canc.org.au':		// DreamHost
+	case 'ewills':	$inc = '/home/ewills/evan/includes/'; break; // DreamHost
+
+	case 'apps.acu.edu.au':		// ACU
+	case 'testapps.acu.edu.au':	// ACU
+	case 'dev1.acu.edu.au':		// ACU
+	case 'blogs.acu.edu.au':	// ACU
+	case 'studentblogs.acu.edu.au':	// ACU
+	case 'dev-blogs.acu.edu.au':	// ACU
+	case 'evanw':	$inc = '/home/evanw/includes/'; break; // ACU
+};
+if(!function_exists('debug'))
+{
+	if(file_exists($inc.'debug.inc.php'))
+	{
+		if(!file_exists($pwd.'debug.info') && is_writable($pwd) && file_exists($inc.'template.debug.info'))
+		{ copy( $inc.'template.debug.info' , $pwd.'debug.info' ); };
+		include($inc.'debug.inc.php');
+	}
+	else { function debug(){}; };
+};
+
+// END: debug include
+// ==================================================================
+
 /**
  * @function build_file_list() recursively reads through a given
  * directory tree and returns an array of files that match various
@@ -20,25 +57,29 @@
  *        If a comma is required within a part it must be escaped
  *        with a back slash
  *        e.g. train\,engine,bus,truck would match files containing
- *             'train,engind' and/or bus and/or 'truck'
+ *             'train,engine' and/or bus and/or 'truck'
  *        Unescaped white space is removed from begining and end of
  *        each part
  *        e.g. 'train, car, bike, \ wheel\ ' would match files
- *             containing, 'train' and/or 'car' and/or bike and/or
+ *             containing, 'train' and/or 'car' and/or 'bike' and/or
  *             ' wheel '
- * @param FLAGS strings the following values can be passed in any
+ * @param FLAGS string the following values can be passed in any
  *        order
+ *	  'extension' [DEFAULT] match the file extension
+ *		  NOTE: DO NOT include the first full stop
+ *			e.g.	'.inc.php' use 'inc.php'
+ *				'.html' use 'html'
  *        'prefix' match the file part if it is at the begininga of
  *              the file name
  *        'suffix' match the file part if it at the end of the file
  *              name but before the file extension
  *        'anywhere' check if the file part is anywhere in the file
  *              name string
- *        NOTE: By default, the file part to be matched is the file
- *              extension. To change what part of the file is checked
- *              you can pass any of the following.
- *        NOTE: It doesn't make sense to pass all three but if you do
- *              the last one will be the one used.
+ *	  'whole' check if the whole file part exactly matches the
+ *		file name string
+ *
+ *        NOTE: It doesn't make sense to pass more than one of the
+ *		above but if you do the last one will be the one used
  *
  *       'sensitive' forces the matching process to be case sensitive
  *       NOTE: it will also accept 'case sensitive', 'case_sensitive',
@@ -58,11 +99,23 @@
  *             can be passed multiple times.
  *             Also like $file_parts, unescaped white space is
  *             stripped from the begining and end of the string.
+ *
+ * @return array two dimensional e.g.
+ *		array(
+ *			 0 => array( 'path' => [path to file but not file itself] , 'file' => [file name] )
+ *			,1 => array( 'path' => [path to file but not file itself] , 'file' => [file name] )
+ *			,2 => array( 'path' => [path to file but not file itself] , 'file' => [file name] )
+ *			,3 => array( 'path' => [path to file but not file itself] , 'file' => [file name] )
+ *			,4 => array( 'path' => [path to file but not file itself] , 'file' => [file name] )
+ *			,5 => array( 'path' => [path to file but not file itself] , 'file' => [file name] )
+ *			,6 => array( 'path' => [path to file but not file itself] , 'file' => [file name] )
+ *		)
  */
 function build_file_list()
 {
 	$retrieved_args = func_get_args();
 	$start_location = $retrieved_args[0];
+	$find_string = $retrieved_args[1];
 	$file_name_parts = array();
 	build_file_list__explode($retrieved_args[1],$file_name_parts);
 	$part_pos = 'extension';
@@ -71,6 +124,7 @@ function build_file_list()
 	$exclude = array();
 	$args = func_num_args();
 	$extra_args = array();
+	$error = '';
 	if( $args > 2 )
 	{
 		if(is_array($retrieved_args[2]) && !empty($retrieved_args[2]))
@@ -88,6 +142,11 @@ function build_file_list()
 			};
 		};
 
+		if( is_string($extra_args) )
+		{
+			$extra_args = array($extra_args);
+		};
+
 		for( $a = 0 ; $a < count($extra_args) ; ++$a )
 		{
 			$this_arg = strtolower($extra_args[$a]);
@@ -97,6 +156,7 @@ function build_file_list()
 				case 'prefix':
 				case 'suffix':
 				case 'anywhere':
+				case 'whole':
 					$part_pos = $this_arg;
 					break;
 				case 'sensitive':
@@ -127,11 +187,11 @@ function build_file_list()
 
 	if( $insensitive === true )
 	{
-		if(!empty($exclude))
+		if(!empty($this->exclude))
 		{
-			for( $a = 0 ; $a < count($exclude) ; ++$a )
+			for( $a = 0 ; $a < count($this->exclude) ; ++$a )
 			{
-				$exclude[$a] = strtolower($exclude[$a]);
+				$this->exclude[$a] = strtolower($this->exclude[$a]);
 			};
 		};
 		foreach( $file_name_parts as $key => $value )
@@ -168,7 +228,7 @@ function build_file_list()
 					}
 					elseif(!empty($returned_files))
 					{
-						$error = '$file_path contains no .'.$file_name_parts.' files';
+						$error = make_error($start_location , $retrieved_args[1] , $part_pos );
 					};
 				}
 				else
@@ -191,7 +251,7 @@ function build_file_list()
 			}
 			else
 			{
-				return '"'.$start_location.'" contained no '.func_get_arg(1).' files';
+				return make_error($start_location , $retrieved_args[1] , $part_pos );
 			};
 		}
 		else
@@ -201,7 +261,7 @@ function build_file_list()
 	}
 	else
 	{
-		return '"'.$start_location.'" is not a valid direcotry';
+		return "$start_location is not a valid direcotry\n";
 	};
 };
 
@@ -354,6 +414,25 @@ function build_file_list__anywhere( $name , $part )
 
 
 /**
+ * @function build_file_list__whole() checks if a given string 
+ * exactly matches a given file name.
+ *
+ * @param name string file name to test
+ * @param part string string to find
+ *
+ * @return boolean true if string exactly matches. false otherwise
+ */
+function build_file_list__whole( $name , $part )
+{
+	if( $name == $part )
+	{
+		return true;
+	};
+	return false;
+};
+
+
+/**
  * @function build_file_list__explode() explodes a given string on
  * unescaped commas ',' it then strips unescaped commas and white
  * space from the begining and end of the string
@@ -373,3 +452,87 @@ function build_file_list__explode($input,&$update)
 		};
 	};
 };
+
+/**
+ * @function make_error() generates an error string appropriate to
+ * where the matching string is to be found in a file name
+ *
+ * @param $start_location string the start location currently being
+ *	  searched
+ * @param $file_part string the string a file must contain
+ * @param $part_pos where the string is to be found
+ *
+ * @return string error message
+ */
+function make_error($start_location,$file_part,$part_pos)
+{
+	switch($part_pos)
+	{
+		case 'extension':
+			$error = "with the extension \"$file_part\"";
+			break;
+		case 'prefix':
+			$error = "starting with \"$file_part\"";
+			break;
+		case 'suffix':
+			$error = "where the name part of the file ends with the string \"$file_part\"";
+			break;
+		case 'anywhere':
+			$error = "that contain the string \"$file_part\"";
+			break;
+		case 'whole':
+			$error = "mathing \"$file_part\"";
+			break;
+	};
+	return wordwrap("$start_location has no files $error",70)."\n";
+};
+
+/**
+ * ==================================================================
+ * The following code allows the above functions to be used to find
+ * files on your local system when you don't have something like
+ * 'locate' (as is the case with one of our work servers)
+ *
+ * It only get run if this file is run directly and is passed at
+ * least two additional parameter (other than the script name)
+ *
+ * The paramters are as follows:
+ *	[0] -	this file's name (required)
+ *	[1] -	the path to be searched (required)
+ *	[3] -	the string to match files against (required)
+ *	[4] -	the part of the file name the string is to be
+ *		found. (optional)
+ */
+
+if( isset($_SERVER['argc']) && $_SERVER['argc'] > 2)
+{
+	$file_path = $_SERVER['argv'][1];
+	$file_part = $_SERVER['argv'][2];
+	$part_pos = '';
+	if($_SERVER['argc'] > 3)
+	{
+		$part_pos = $_SERVER['argv'][3];
+	};
+	$list_ = build_file_list($file_path,$file_part,$part_pos);
+
+	if( !empty($list_) )
+	{
+		if( is_array($list_) )
+		{
+			for($a = 0 ; $a < count($list_) ; ++$a )
+			{
+				if(isset($list_[$a]['path']) && isset($list_[$a]['file']))
+				{
+					echo "\n{$list_[$a]['path']}{$list_[$a]['file']}";
+				};
+			};
+		}
+		else
+		{
+			echo "\n$list_";
+		};
+
+		echo "\n";
+	};
+};
+

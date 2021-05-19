@@ -11,33 +11,34 @@
  *		 code - wrap the output in <code class="hl"></code>
  * 			tags only
  * 		[default] - don't wrap the output in anything
+ * @param $anything_else
  *
  * @return string HTML code with the markup highlighted.
  */
 function syntax_highlight( $input , $wrapper = '' , $anthing_else = false )
 {
-	$style = '<style type="text/css">
-pre { border:0.1em solid #666; padding:2em; margin:2em; background-color:#eee; color: }
-code.notes,pre.notes { font-size:100%; padding:0.7em 0%; }
-.hl .el { color:#808; }
-.hl .at { color:#088; }
-.hl .va { color:#aa0; }
-.hl .imp { font-weight:bold; }
-.hl .co { color:#888;  background-color:#f5f5f5; }
-.hl .co .el { color:#e9e; }
-.hl .co .at { color:#6cc; }
-.hl .co .va { color:#dd5; }
-</style>';
+	$style = '<style type="text/css">'.SYNTAX_HIGHLIGHT_CSS.'</style>';
 
 
-	$tag_match = '/<(\/?(?:abbr|acronym|address|applet|area|a|base|basefont|bdo|big|blockquote|body|br|button|b|caption|center|cite|code|col|colgroup|dd|del|dfn|dir|div|dl|dt|em|fieldset|font|form|frame|frameset|h1|h2|h3|h4|h5|h6|head|hr|html|iframe|img|input|ins|isindex|i|kbd|label|legend|li|link|map|menu|meta|noframes|noscript|object|ol|optgroup|option|param|pre|p|q|samp|script|select|small|span|strike|strong|style|sub|sup|s|table|tbody|td|textarea|tfoot|th|thead|title|tr|tt|ul|u|var))(.*?)(\/?)>/isx';
+	$tag_match = '/<(\/?(?:abbr|acronym|address|applet|area|a|base|basefont|bdo|big|blockquote|body|br|button|b|caption|center|cite|code|col|colgroup|dd|del|dfn|dir|div|dl|\!doctype|dt|em|fieldset|font|form|frame|frameset|h1|h2|h3|h4|h5|h6|head|hr|html|iframe|img|input|ins|isindex|i|kbd|label|legend|li|link|map|menu|meta|noframes|noscript|object|ol|optgroup|option|param|pre|p|q|samp|script|select|small|span|strike|strong|style|sub|sup|s|table|tbody|td|textarea|tfoot|th|thead|title|tr|tt|ul|u|var))(.*?)(\/?)>/isx';
 
 	if($anthing_else === true && !defined('SYNTAX_HIGHLIGHT_ANTHING_ELSE'))
 	{
 		define('SYNTAX_HIGHLIGHT_ANTHING_ELSE',TRUE);
 	};
-	$throughput = preg_replace_callback($tag_match,'SYNTAX_HIGHLIGHT_CALLBACK_EL',$input);
-	$output = preg_replace('/<(!(?:\[endif\]--|--\[[a-z0-9 ]+\]|--.*?--))>/is','<span class="co">&lt;\1&gt;</span>',$throughput);
+	$throughput = preg_replace_callback($tag_match,'SYNTAX_HIGHLIGHT_CALLBACK_EL',matrix_url($input));
+	$output = preg_replace(
+			 array(
+				 '/<(!(?:\[endif\]--|--\[[a-z0-9 ]+\]|--.*?--))>/is'
+				,'/<!\[CDATA\[(.*?)\]\]>/is'
+			 )
+			,array(
+				 '<span class="co">&lt;\1&gt;</span>'
+				,'<span class="cd">&lt;&#33;&#91;CDATA&#91;</span><span class="cdc">\1</span><span class="cd">&#93;&#93;&gt;</span>'
+			 )
+			,$throughput
+		  );
+
 	switch($wrapper)
 	{
 		case 'css':
@@ -74,3 +75,32 @@ function SYNTAX_HIGHLIGHT_CALLBACK_EL($matches)
 	};
 	return $open.$attributes.'<span class="el">'.$close.'&gt;</span>';
 };
+
+function matrix_url($input)
+{
+	return preg_replace(
+		 '/((?:href|src)=[\'"]?\.\/)\?(a=)/i'
+		,'\1&#63;\2'
+		,$input);
+};
+
+define('SYNTAX_HIGHLIGHT_CSS','
+/* ----------------------------------------------
+   START: Syntax Highlight CSS */
+
+pre { border:0.1em solid #666; padding:2em; margin:2em; background-color:#eee; color: }
+code.hl,pre.hl { font-size:100%; padding:0.7em 0%; }
+.hl .el { color:#808; }
+.hl .at { color:#088; }
+.hl .va { color:#aa0; }
+.hl .imp { font-weight:bold; }
+.hl .co { color:#888;  background-color:#f5f5f5; }
+.hl .co .el { color:#e9e; }
+.hl .co .at { color:#6cc; }
+.hl .co .va { color:#dd5; }
+.hl .cd { color:#5dd; }
+.hl .cdc { color:#55d; }
+
+/* END: Syntax Highlight CSS 
+---------------------------------------------- */
+');

@@ -1,6 +1,6 @@
 <?php
 
-function die_data($input,$level = 0)
+function die_data( $input , $level = 0 , $and_die = false )
 {
 	$d_data = debug_backtrace();
 	$input = wordwrap($input,50);
@@ -14,7 +14,7 @@ function die_data($input,$level = 0)
 	};
 	$ln = $d_data[$level]['line'];
 	$fl = $d_data[$level]['file'];
-	return "
+	$msg = "
 
 ===========================================================
 ($fl - line $ln)
@@ -22,7 +22,16 @@ $input
 ===========================================================
 
 ";
-}
+
+	if( $and_die === false )
+	{
+		return $msg;
+	}
+	else
+	{
+		die($msg);
+	};
+};
 
 function die_data_db( $sql , $level = 0 )
 {

@@ -1,17 +1,77 @@
 <?php
 
-class write_log
+if( !class_exists('time__ellapsed') )
 {
-	public $level = 0;
-	public $default_level = 0;
-	public function __construct($log_level)
+	require_once(dirname(__FILE__).'/time/time_ellapsed.class.php');
+}
+
+abstract class write_log
+{
+
+	protected $level = 0;
+
+	protected $default_level = 0;
+
+	protected $time = 0; 
+
+	protected $show_time = false;
+	protected $show_trace = false;
+
+/**
+ * @var $output string template for backtrace part of message
+ */
+	protected $output = '';
+
+	public function __construct( $log_level , $output = '' )
 	{
 		$this->level = $log_level;
 		$this->default_level = $log_level;
+		if( is_string($output))
+		{
+			if( '' == trim($output) || substr_count( $output , '[[MSG]]' ) == 0 )
+			{
+				$this->output = "\n[[MSG]]";
+				$keywords = array('MSG');
+			}
+			else
+			{
+				if( preg_match_all('/\[\[(A-Z)\]\]/',$output,$matches) )
+				{
+					debug($matches);
+				}
+				if( substr_count( $output , '[[TIME]]' ) > 0 )
+				{
+					$this->show_time = true;
+				}
+				if( substr_count( $output , '[[file]]' ) > 0 || substr_count( $output , '[[line]]' ) )
+				{
+					$this->show_trace = true;
+				}
+			}
+		}
+		elseif( is_array($output) )
+		{
+			if( in_array( 'time' , $output ) )
+			{
+				$this->show_time = true;
+			}
+			if( in_array( 'line' , $output ) || in_array( 'file' , $output ) )
+			{
+				$this->show_trace = true;
+			}
+		}
+		if( $this->show_time === true )
+		{
+			$this->time = new time__ellapsed( true , true , ':' , true );
+		}
+		else
+		{
+			$this->time = new time__ellapsed_null();
+		}
 	}
 /**
  * @function write() checks the LOG_LEVEL (set in
- * PHPlist_sync-user.config.php) agains the level for that message.
+ * PHPlist_sync-user.config.php) against the level for that message.
  * If the message level is equal to or higher than the LOG_LEVEL the
  * message is logged.
  *
@@ -22,12 +82,14 @@ class write_log
 		if( $this->level >= $level )
 		{
 			$this->do_write($input);
-		};
-		if($die == true )
+		}
+		if( $die == true )
 		{
 			exit;
-		};
+		}
 	}
+
+	abstract protected function do_write( $input );
 
 	public function level_update( $update )
 	{
@@ -40,86 +102,11 @@ class write_log
 			if(is_int($update) && $update >= 0 )
 			{
 				$this->level = $update;
-			};
-		};
-
-	}
-	public function format_time( $s_time , $e_time )
-	{
-		if(!is_array($s_time))
-		{
-			$s_time = array($s_time,$s_time);
-		};
-		if(!is_array($e_time))
-		{
-			$e_time = array($e_time,$e_time);
-		};
-
-		$tmp = $e_time[0] - $s_time[0];
-		$unit = '';
-		$output = '';
-		if($tmp > 59)
-		{
-			$hours = floor($tmp/3600);
-			$hours_in = $hours * 3600;
-			$minutes = floor(($tmp - $hours_in)/60);
-			$minutes_in = $minutes*60;
-			$seconds = ($tmp - $hours_in - $minutes_in);
-			if($hours > 0)
-			{
-				if($hours > 9)
-				{
-					$output .= "0$hours:";
-				}
-				else
-				{
-					$output .= "0$hours:";
-				};
-				$unit = '(HH:MM:SS)';
-			};
-			if($minutes > 0)
-			{
-				if($minutes > 9)
-				{
-					$output .= "$minutes:";
-				}
-				else
-				{
-					$output .= "0$minutes:";
-				};
-				if($unit == '')
-				{
-					$unit = '(MM:SS)';
-				};
 			}
-			elseif($hours > 0)
-			{	
-				$output .= '00:';
-			};
-			if($seconds > 9)
-			{
-				$output .= $seconds;
-			}
-			elseif($seconds > 0)
-			{
-				$output .= "0$seconds";
-			}
-			else
-			{
-				$output .= "00";
-			};
 		}
-		else
-		{
-			$tmp = (($e_time[0]+$e_time[1]) - ($s_time[0]+$s_time[1]));
-			$output = round($tmp,2);
-		};
-		if($unit == '')
-		{
-			$unit = 'Seconds';
-		};
-		return "$output $unit";
+
 	}
+
 
 	public function format_file_size($file)
 	{
@@ -138,92 +125,238 @@ class write_log
 		{	
 			$type = 'B';
 			$value = $bytes;
-		};
+		}
 
 		return round($value,2).$type;
+	}
+
+/**
+ * @method show_output() does the job of actually formatting the output
+ */
+	protected function show_output($msg)
+	{//debug($msg);
+		if( $this->output != '' )
+		{
+			$tmp = trim($this->output);
+			if( $tmp == '[[MSG]]' )
+			{
+				return str_replace('[[MSG]]',$msg,$this->output);
+			}
+			else
+			{
+				$find = array('[[MSG]]');
+				$replace = array($msg);
+
+				$trace = debug_backtrace();
+				if( isset($trace[2]) )
+				{		
+					$find = array('[[MSG]]');
+					$replace = array($msg);
+					if( $this->show_time === true )
+					{
+						$find[] = '[[TIME]]';
+						$replace[] = $this->time->time_ellapsed();
+					}
+					if( $this->show_trace === true )
+					{
+						foreach( $trace[$a] as $key => $value )
+						{
+							$find[] = '[['.strtoupper($key).']]';
+							if( $key != 'args' )
+							{
+								$replace[] = $value;
+							}
+//							else
+//							{
+//								$replace[] = var_export($value,true);
+//							}
+						}
+					}
+				}
+				return str_replace( $find , $replace , $this->output );
+			}
+		}
+		else
+		{
+			return '';
+		}
+	}
+
+
+/**
+ * @method __clone() resets the start time.
+ */
+	public function __clone()
+	{
+		if( $this->show_time === true )
+		{
+			$this->time = new time__ellapsed( true , true , ':' , true );
+		}
 	}
 
 }
 
 class log_to_file extends write_log
 {
+	protected $file_handle = null;
 	protected $file_name = '';
-	public function __construct( $log_level , $file , $empty_file = true )
+
+	public function __construct( $log_level , $output = '' , $file , $empty_file = true )
 	{
-		parent::__construct($log_level);
+		parent::__construct($log_level , $output );
 		if( is_readable(dirname($file)) && is_writable(dirname($file)))
 		{
-			if( !is_file($file) || ( is_readable($file) && is_writable($file) ))
+			if( is_file($file) && ( !is_readable($file) || !is_writable($file) ))
 			{
-				$this->file_name = $file;
+				$this->file_name = dirname($file).'/logging-output_'.date('Y-m-d_H-m').'.txt';
 			}
 			else
 			{
-				$this->file_name = dirname($file).'/logging-output_'.date('Y-m-d_H-m').'.txt';
+				$this->file_name = $file;
 			}
 		}
 		elseif( is_readable('./') && is_writable('./'))
 		{
 			$this->file_name = './logging-output_'.date('Y-m-d_H-m').'.txt';
-		};
-		if($empty_file === true)
+		}
+
+		if( $empty_file === false )
 		{
-			file_put_contents($this->file_name,'');
-		};
+			$rw_mode = 'a+';
+		}
+		else
+		{
+			$rw_mode = 'w+';
+		}
+		if($this->file_name != '' )
+		{
+			$this->file_handle = fopen($this->file_name,$rw_mode);
+		}
+		if( $this->file_handle === null )
+		{
+			die('something went wrong');
+		}
 	}
 
-	protected function do_write( $input , $do_die = false )
+	protected function do_write( $input )
 	{
-		file_put_contents($this->file_name,"\n$input",FILE_APPEND);
+		fwrite( $this->file_handle , $this->show_output($input) );
+	}
+	
+	public function __destruct()
+	{
+		if( fread($this->file_handle,1000) == '' )
+		{
+			$unlinkit = true;
+		}
+		else
+		{
+			$unlinkit = false;
+		}
+		fclose( $this->file_handle );
+		if( $unlinkit === true )
+		{
+			unlink($this->file_name);
+		}
 	}
 }
 
+
+/**
+ * @class log_to_db writes log info to a database;
+ */
 class log_to_db extends write_log
 {
-	public function __construct( $config )
+	private $db = null;
+	private $table_name = '';
+
+	public function __construct( $log_level , $db , $table_name , $output = array('line','file','msg','time','function') )
 	{
-		parent::__construct($config);
+		parent::__construct( $log_level , $output );
+		$this->db = $db;
+		$this->table_name = $table_name;
+	}
+
+	protected function do_write( $input )
+	{
+		$fields = show_output();
+		$fields['msg'] = $input;
+		$sql_fields = "\nINSERT INTO\t`{$this->table_name}`\n(\n\t ";
+		$sql_values = "\n)\nVALUES\n(\n\t ";
+		$sep = '';
+		foreach( $fields as $key => $value )
+		{
+			$sql_fields .= $sep.$key;
+			$sql_values .= $sep.$value;
+			$sep = "\n\t,";
+		}
+		$this->db->query($sql_fields.$sql_values."\n);");
+	}
+
+	protected function show_output($msg)
+	{
+		$a = 2;
+		$debug = debug_backtrace();
+		if( $this->output != false )
+		{
+			if(isset($debug[$a]))
+			{
+				unset( $debug[$a]['args'] );
+				return  $debug[$a] ;
+			}
+			else
+			{
+				return array(
+					 'line' => 0
+					,'file' => 'UNKNOWN'
+					,'function' => 'UNKNOWN'
+				);
+			}
+		}
 	}
 }
 
 
 class log_to_debug extends write_log
 {
-	public function __construct( $config )
+	public function __construct( $log_level , $output = '' )
 	{
-		parent::__construct($config);
+		if( $output == '' )
+		{
+			$output = "
+
+===========================================================
+[[FILE]] - Line: [[LINE]] ([[FUNCTION]]
+-----------------------------------------------------------
+-----------------------------------------------------------
+";
+		}
+		parent::__construct( $log_level , $output );
 	}
 
 	protected function do_write( $input )
 	{
-		$tmp_debug = debug_backtrace();
-		$br = "\n---------------------------------------------------------------------";
-		if(isset($tmp_debug[1]))
-		{
-			echo "\n=====================================================================";
-			echo "\n{$tmp_debug[1]['file']} - LINE: {$tmp_debug[1]['line']}$br";
-			unset($tmp_debug[1]['file'],$tmp_debug[1]['line']);
-			foreach($tmp_debug[1] as $key => $value )
-			{
-				echo "\n    $key = $value";
-			};
-			echo "$br\n$input\n";
-		};
+		echo $this->show_output($input);
+	}
+
+	public function __destruct()
+	{
+		echo "\n\n";
 	}
 }
 
 
 class log_to_screen extends write_log
 {
-	public function __construct( $log_level )
+	public function __construct( $log_level , $output = '' )
 	{
-		parent::__construct( $log_level );
+		parent::__construct( $log_level , $output );
 		echo "\n\n";
 	}
 
 	protected function do_write( $input )
 	{
-		echo "\n$input";
+		echo $this->show_output($input);
 	}
 
 	public function __destruct()
@@ -232,21 +365,72 @@ class log_to_screen extends write_log
 	}
 }
 
-class log_to_screen_and_file extends log_to_file
+
+
+class log_to_null extends write_log
 {
-	public function __construct( $log_level , $file , $empty_file = true )
+	public function __construct( $log_level , $output = '' ) {}
+	protected function do_write( $input ) {}
+}
+
+/**
+ * @class log_to_multi outputs to all of the log types supplied
+ * In essecence it agregates the log types
+ */
+class log_to_multi
+{
+/**
+ * @var $logs array of log objects 
+ */
+	protected $logs = array();
+
+
+/**
+ * @method __construct expects an array for each log type
+ * The first item in each array must be the log type
+ *	(e.g. 'file', 'db', 'screen', 'debug')
+ * The second item must be an array of arguments (in correct order),
+ * arguments you wish to supply for the class constructor
+ *	NOTE:	arguments that are optional for the class constructor
+ *		are also optional here.
+ *
+ * e.g.		array(
+ *			 'file'
+ *			,array(
+ *				 2	 // log level
+ *				,'/var/www/logs/test.log' Log file
+ *				,true
+ *				,"[line [[line]] - [[FILE]] ([[FUNCTION]])]\n"
+ *			 )
+ *		 )
+ *		,array(
+ *			 'debug'
+ *			,array( // list of arguments );
+ *				,2	// log level
+ *			 )
+ *		 )
+ *	)
+ */
+	public function __construct( $log_objects )
 	{
-		parent::__construct($log_level, $file , $empty_file);
-		echo "\n\n";
+		if( is_array($log_objects) && !empty($log_objects) )
+		{
+			foreach( $log_objects as $log_object )
+			{
+				if( is_a( $log_object , 'write_log' ) )
+				{
+					$this->logs[] = $log_object;
+				}
+			}
+		}
 	}
 
-	protected function do_write( $input , $do_die = false )
+	protected function write( $input , $level = 0 , $die = false )
 	{
-		file_put_contents($this->file_name,"\n$input",FILE_APPEND);
-		echo "\n$input";
-	}
-	public function __destruct()
-	{
-		echo "\n\n";
+		foreach($this->logs as $log )
+		{
+			$log->write( $input , $level = 0 , $die = false );
+		}
 	}
 }
+
